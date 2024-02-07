@@ -4,7 +4,7 @@ from prom2teams.teams.teams_alert_schema import TeamsAlert, TeamsAlertSchema
 from prom2teams.teams.teams_alert_validation import remove_double_quotes_from_teams_alert
 
 GROUPABLE_FIELDS = ['name', 'description', 'instance',
-                    'severity', 'status', 'summary', 'fingerprint', 'runbook_url']
+                    'severity', 'status', 'summary', 'fingerprint', 'runbook_url', 'externalURL', 'generatorURL']
 EXTRA_FIELDS = ['extra_labels', 'extra_annotations']
 FIELD_SEPARATOR = ',\n\n\n'
 
@@ -17,7 +17,7 @@ def map_prom_alerts_to_teams_alerts(alerts):
         for alert in alerts[same_status_alerts]:
             alert = TeamsAlert(alert.name, alert.status.lower(), alert.severity,
                                alert.summary, alert.instance, alert.description,
-                               alert.fingerprint, alert.runbook_url, alert.extra_labels,
+                               alert.fingerprint, alert.runbook_url,  alert.externalURL, alert.generatorURL, alert.extra_labels,
                                alert.extra_annotations)
             alert = remove_double_quotes_from_teams_alert(alert)
             json_alert = schema.dump(alert)
@@ -65,6 +65,7 @@ def _combine_alerts_to_alert(alerts):
 def _map_dict_alert_to_alert(alert):
     return TeamsAlert(alert['name'], alert['status'].lower(), alert['severity'], alert['summary'],
                       alert['instance'], alert['description'], alert['fingerprint'], alert['runbook_url'],
+                      alert['externalURL'], alert['generatorURL'],
                       alert['extra_labels'], alert['extra_annotations'])
 
 
@@ -73,7 +74,15 @@ def _combine_groupable_fields(alerts):
 
 
 def _combine_extra_fields(alerts):
-    return {field: {k: v for alert in alerts for k, v in alert[field].items()} for field in EXTRA_FIELDS}
+    res = {}
+    for field in EXTRA_FIELDS:
+        res[field] = {}
+        for alert in alerts:
+            for k, v in alert[field].items():
+                if k not in res[field]:
+                    res[field][k] = []
+                res[field][k].append(v)
+    return res
 
 
 def _teams_visualization(field):
